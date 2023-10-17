@@ -165,10 +165,10 @@ typedef struct adjacency_node {      //4 + 4*8 + 4 + 4 = 44
   uint target;
   uint start = 0;
   unsigned short duration = 0;
-  //box mbr;
+  box mbr;
 
   void print() {
-    cout << "target: " << target << " start: " << start << " duration: " << duration;
+    cout << "target: " << target << " low0: " << mbr.low[0] << " start: " << start << " duration: " << duration;
   }
 } adjacency_node;
 
@@ -250,7 +250,7 @@ int main(int argc, char **argv) {
 #pragma omp parallel for
     for (int i = 0; i < this_s_count; i++) {                          //insert new edges
       adjacency_node *temp = new adjacency_node;
-      //temp->mbr = meetings[i].mbr;
+      temp->mbr = meetings[i].mbr;
       temp->start = meetings[i].start;
       temp->duration = meetings[i].end - meetings[i].start;
       for (int k = 0; k < 2; k++) {
@@ -321,7 +321,6 @@ int main(int argc, char **argv) {
 //  assert(it->status().ok()); // Check for any errors found during the scan
 //  delete it;
 
-  //delete []neighbor_count;
 
 
   return 0;

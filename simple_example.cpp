@@ -42,8 +42,8 @@ using namespace ROCKSDB_NAMESPACE;
 
 typedef struct meeting_unit{
   size_t key;
-  unsigned short start;
-  unsigned short end;
+  unsigned  start;
+  unsigned  end;
   //Point midpoint;            //2023.7.17
   box mbr;                     //7.24 7.26
   bool isEmpty(){
