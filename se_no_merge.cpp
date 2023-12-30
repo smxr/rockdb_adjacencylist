@@ -210,7 +210,6 @@ int main(int argc, char **argv) {
   p.open(config.output_filename, ios::out | ios::trunc);
   p << "t" << "," << "meetings" << "," << "time(s)" << endl;
 
-
   omp_lock_t *lock = new omp_lock_t[OBJECTS_COUNT + 1];
   for (int i = 0; i < OBJECTS_COUNT + 1; i++) {
     omp_init_lock(&lock[i]);
@@ -241,48 +240,46 @@ int main(int argc, char **argv) {
     fprintf(stderr, "t=%d meetings=%u\n", t, this_s_count);
     p << t << "," << this_s_count << ",";
 
-    meeting_unit meetings[this_s_count];
-    for (int i = 0; i < this_s_count; i++) {
-      inFile.read((char *) &meetings[i], sizeof(meeting_unit));
-    }
+    meeting_unit *meetings = new meeting_unit[this_s_count];
+//    for (int i = 0; i < this_s_count; i++) {
+//      inFile.read((char *) &meetings[i], sizeof(meeting_unit));
+//    }
+    inFile.read((char *)meetings, sizeof(meeting_unit)*this_s_count);
     inFile.close();
     omp_set_num_threads(128);
 #pragma omp parallel for
     for (int i = 0; i < this_s_count; i++) {                          //insert new edges
-      adjacency_node *temp = new adjacency_node;
-      temp->mbr = meetings[i].mbr;
-      temp->start = meetings[i].start;
-      temp->duration = meetings[i].end - meetings[i].start;
+      uint pid = 0,target = 0;
+      __uint128_t temp_key = 0;
+      string temp_box;
       for (int k = 0; k < 2; k++) {
-        uint pid;
         if (k == 0) {
           pid = meetings[i].get_pid1();
-          temp->target = meetings[i].get_pid2();
-        } else {         //exchange
+          target = meetings[i].get_pid2();
+        } else {  // exchange
           pid = meetings[i].get_pid2();
-          temp->target = meetings[i].get_pid1();
+          target = meetings[i].get_pid1();
         }
-        string str_key = to_string(pid)+"_"+to_string(t)+"_"+to_string(neighbor_count_pers[pid]);
-        string temp_string = Pack(temp);
-        omp_set_lock(&lock[pid]);
-        Status s2 = db->Put(WriteOptions(), str_key, temp_string);
+        temp_key = (__uint128_t)meetings[i].end +
+                   (__uint128_t)meetings[i].start * 100000000 +
+                   (__uint128_t)target * 100000000 * 100000000 +
+                   (__uint128_t)pid * 100000000 * 100000000 * 100000000;
+        temp_box = Pack(&meetings[i].mbr);
+        Status s2 = db->Put(WriteOptions(), temp_key, temp_box);
         if (!s.ok()){
           cerr << s.ToString() << endl;
           assert(s2.ok());
         }
-        neighbor_count_pers[pid]++;
-        omp_unset_lock(&lock[pid]);
       }
-      delete temp;
     }
-    double timeend = omp_get_wtime( );
+    double timeend = omp_get_wtime();
     double time_taken1 = timeend - timestart;
     fprintf(stderr, "time_taken1: %lf\n", time_taken1);
 
     // get the system time
     auto now = chrono::system_clock::now();
     auto time = chrono::system_clock::to_time_t(now);
-    // 打印时间
+
     cerr << ctime(&time) << endl;
 
     p << time_taken1 << endl;
@@ -295,31 +292,31 @@ int main(int argc, char **argv) {
   }
   delete []lock;
 
-//  int not_zero_count = 0;
-//  int sum = 0;
-//  for(int i=0;i<OBJECTS_COUNT + 1;i++){
-//    if(neighbor_count[i]>0){
-//      not_zero_count++;
-//      sum += neighbor_count[i];
-//    }
-//  }
-//  cout<<"total key in db: "<<not_zero_count<<endl;
-//  cout<<"average neighbor for per node: "<<sum/not_zero_count<<endl;
+  //  int not_zero_count = 0;
+  //  int sum = 0;
+  //  for(int i=0;i<OBJECTS_COUNT + 1;i++){
+  //    if(neighbor_count[i]>0){
+  //      not_zero_count++;
+  //      sum += neighbor_count[i];
+  //    }
+  //  }
+  //  cout<<"total key in db: "<<not_zero_count<<endl;
+  //  cout<<"average neighbor for per node: "<<sum/not_zero_count<<endl;
 
-//  Iterator* it = db->NewIterator(ReadOptions());
-//  for (it->SeekToFirst(); it->Valid(); it->Next()) {
-//    //int key = atoi(it->key().ToString().c_str());
-//    cout << it->key().ToString() << ": ";
-//
-//    string string_node = it->value().ToString();       //48 ,pack doesn't change .size
-//    std::unique_ptr<adjacency_node> this_node = Unpack<adjacency_node>(string_node);
-//    this_node->print();
-//    cout<<" ; ";
-//
-//    cout<<endl;
-//  }
-//  assert(it->status().ok()); // Check for any errors found during the scan
-//  delete it;
+  //  Iterator* it = db->NewIterator(ReadOptions());
+  //  for (it->SeekToFirst(); it->Valid(); it->Next()) {
+  //    //int key = atoi(it->key().ToString().c_str());
+  //    cout << it->key().ToString() << ": ";
+  //
+  //    string string_node = it->value().ToString();       //48 ,pack doesn't change .size
+  //    std::unique_ptr<adjacency_node> this_node = Unpack<adjacency_node>(string_node);
+  //    this_node->print();
+  //    cout<<" ; ";
+  //
+  //    cout<<endl;
+  //  }
+  //  assert(it->status().ok()); // Check for any errors found during the scan
+  //  delete it;
 
 
 
