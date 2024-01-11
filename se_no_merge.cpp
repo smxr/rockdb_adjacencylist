@@ -219,7 +219,6 @@ int main(int argc, char **argv) {
   //while(inFile.open())
   int t;
   for (t = config.begin_second; t < config.seconds_duration; t++) {
-    short *neighbor_count_pers = new short[OBJECTS_COUNT + 1]();
     //ifstream inFile(config.input_filename, ios::in | ios::binary);
     string file_name = config.meeting_source+"meetings_"+to_string(t)+".in";
     ifstream inFile(file_name, ios::in | ios::binary);
@@ -250,7 +249,7 @@ int main(int argc, char **argv) {
 #pragma omp parallel for
     for (int i = 0; i < this_s_count; i++) {                          //insert new edges
       uint pid = 0,target = 0;
-      __uint128_t temp_key = 0;
+      __uint128_t key_128 = 0;
       string temp_box;
       for (int k = 0; k < 2; k++) {
         if (k == 0) {
@@ -260,12 +259,14 @@ int main(int argc, char **argv) {
           pid = meetings[i].get_pid2();
           target = meetings[i].get_pid1();
         }
-        temp_key = (__uint128_t)meetings[i].end +
-                   (__uint128_t)meetings[i].start * 100000000 +
-                   (__uint128_t)target * 100000000 * 100000000 +
-                   (__uint128_t)pid * 100000000 * 100000000 * 100000000;
+        key_128 = (__uint128_t)meetings[i].end +
+               (__uint128_t)meetings[i].start * 100000000 +
+               (__uint128_t)target * 100000000 * 100000000 +
+               (__uint128_t)pid * 100000000 * 100000000 * 100000000;
+        char key_char[16];
+        memcpy(key_char,&key_128,sizeof(__uint128_t));
         temp_box = Pack(&meetings[i].mbr);
-        Status s2 = db->Put(WriteOptions(), temp_key, temp_box);
+        Status s2 = db->Put(WriteOptions(), key_char, temp_box);
         if (!s.ok()){
           cerr << s.ToString() << endl;
           assert(s2.ok());
@@ -283,7 +284,6 @@ int main(int argc, char **argv) {
     cerr << ctime(&time) << endl;
 
     p << time_taken1 << endl;
-    delete []neighbor_count_pers;
   }
   p.close();
 
